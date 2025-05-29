@@ -185,14 +185,16 @@ def get_image_info(filepath, filename):
 
 def convert_heic_to_jpg(heic_path, jpg_path):
     heic_img = pyheif.read(heic_path)
+
     img = Image.frombytes(
         heic_img.mode, 
         heic_img.size, 
         heic_img.data, 
         "raw"
     )
+    
     img.save(jpg_path, "JPEG")
-
+        
 
 def file_exists_case_insensitive(target_path):
     folder = os.path.dirname(target_path)
@@ -233,6 +235,11 @@ def get_info_of_all_images_files(folder):
                     convert_heic_to_jpg(filepath, new_jpeg_filepath)
                     info["filename"] = new_jpeg_filename
                     info["filepath"] = new_jpeg_filepath
+                    #
+                    # When the heic image is converted, its orientation is fixed in the jpeg version.
+                    # Hence ignore the orientation data from the heic file.
+                    #
+                    info["orientation"] = 1
                 
                 local_photo_images_info.append(info)
             except Exception as e:
