@@ -80,6 +80,16 @@ import pytz
 #
 LOCAL_TIME_OFFSET_FROM_UTC = timedelta(hours=5, minutes=45)
 
+#
+# Duration for showing each photo
+#
+PHOTO_DURATION_TIME_IN_SECS=2
+
+#
+# Pause between displaying each track segment.  This controls how fast or slow the line progresses
+# in a tour.  The smaller the number the faster the line progresses and vice versa.  
+#
+PAUSE_BETWEEN_LINE_SEGMENTS_IN_SECS=0.005
 
 
 
@@ -617,7 +627,7 @@ def create_kmz_from_gpx_and_photos(folder):
             ET.SubElement(screen_overlay_show, "visibility", attrib={"xmlns": "http://www.opengis.net/kml/2.2"}).text = "1"
 
             wait_element = ET.SubElement(playlist, "gx:Wait")
-            ET.SubElement(wait_element, "gx:duration").text = "2.0"
+            ET.SubElement(wait_element, "gx:duration").text = str(PHOTO_DURATION_TIME_IN_SECS)
 
             animated_update_hide = ET.SubElement(playlist, 'gx:AnimatedUpdate')
             update_hide = ET.SubElement(animated_update_hide, "Update")
@@ -688,7 +698,7 @@ def create_kmz_from_gpx_and_photos(folder):
 
         # Wait for a very short time.  Without this wait, the progressive line goes very, very fast
         wait_element = ET.SubElement(playlist, "gx:Wait")
-        ET.SubElement(wait_element, "gx:duration").text = "0.005"
+        ET.SubElement(wait_element, "gx:duration").text = str(PAUSE_BETWEEN_LINE_SEGMENTS_IN_SECS)
 
         #
         # This is a hack to hide all way points on the ascent when the descent begins.
@@ -723,7 +733,7 @@ def create_kmz_from_gpx_and_photos(folder):
         ET.SubElement(screen_overlay_show, "visibility", attrib={"xmlns": "http://www.opengis.net/kml/2.2"}).text = "1"
 
         wait_element = ET.SubElement(playlist, "gx:Wait")
-        ET.SubElement(wait_element, "gx:duration").text = "2.0"
+        ET.SubElement(wait_element, "gx:duration").text = str(PHOTO_DURATION_TIME_IN_SECS)
 
         animated_update_hide = ET.SubElement(playlist, 'gx:AnimatedUpdate')
         update_hide = ET.SubElement(animated_update_hide, "Update")
