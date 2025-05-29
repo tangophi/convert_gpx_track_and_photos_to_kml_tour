@@ -91,6 +91,20 @@ PHOTO_DURATION_TIME_IN_SECS=2
 #
 PAUSE_BETWEEN_LINE_SEGMENTS_IN_SECS=0.005
 
+#
+# Camera tilt angle in degrees.  If its 0 it means the camera is looking straight down - the terrain
+# is not shown clearly though.
+#
+CAMERA_TILT_ANGLE=60
+
+#
+# Camera range in metres determines how far the view is shown from.
+#
+CAMERA_RANGE=1000
+
+
+
+
 
 
 
@@ -670,9 +684,9 @@ def create_kmz_from_gpx_and_photos(folder):
             ET.SubElement(lookat, 'altitude').text = '0'
             ET.SubElement(lookat, 'heading').text = str(bearing)
             #ET.SubElement(lookat, 'heading').text = '0'
-            ET.SubElement(lookat, 'tilt').text = '60'
+            ET.SubElement(lookat, 'tilt').text = str(CAMERA_TILT_ANGLE)
             #ET.SubElement(lookat, 'tilt').text = '0'
-            ET.SubElement(lookat, 'range').text = '1000'
+            ET.SubElement(lookat, 'range').text = str(CAMERA_RANGE)
             ET.SubElement(lookat, 'altitudeMode').text = 'relativeToGround'            		
 
         # show the line segment
