@@ -123,20 +123,38 @@ This script uses numerous Python libraries.
 
 ---
 
-## ⚙️ Customization
-You can tailor the script for your trip or region:
+## 🔧 Script Customization
 
-Timezone Offset:
-Modify LOCAL_TIME_OFFSET_FROM_UTC to match the timezone where your photos were taken.
+The following section of the script can be customized based on your preferences and data:
 
-Photo Display Duration:
-Change how long each image stays on screen during the animation by adjusting values in the script.
+```python
+#
+# Change this to the proper offset based on where the GPX track was recorded and the photos taken
+#
+LOCAL_TIME_OFFSET_FROM_UTC = timedelta(hours=5, minutes=45)
 
-Waypoint Icons:
-Add or replace PNG icons matching the <sym> names used in your GPX file.
+#
+# Duration for showing each photo
+#
+PHOTO_DURATION_TIME_IN_SECS = 2
 
-Title and Overlays:
-Replace Title.png with your own custom title image. You can also modify or add additional overlay images or text.
+#
+# Pause between displaying each track segment. This controls how fast or slow the line progresses
+# in a tour. The smaller the number, the faster the line progresses, and vice versa.
+#
+PAUSE_BETWEEN_LINE_SEGMENTS_IN_SECS = 0.005
+
+#
+# Camera tilt angle in degrees. If it's 0, it means the camera is looking straight down — the terrain
+# is not shown clearly though.
+#
+CAMERA_TILT_ANGLE = 60
+
+#
+# Camera range in meters determines how far the view is shown from.
+#
+CAMERA_RANGE = 1000
+```
 
 ---
 
