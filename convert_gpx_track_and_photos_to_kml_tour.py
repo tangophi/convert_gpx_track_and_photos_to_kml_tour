@@ -601,9 +601,9 @@ def create_kmz_from_gpx_and_photos(folder):
         ET.SubElement(placemark_show, "visibility").text = "1"
 
         #
-        # There were only 12 way points on the ascent.
+        # There were only 13 way points on the ascent.
         #
-        if i==11:
+        if i==12:
             break
 
     # Change camera position every this number of points 
@@ -631,7 +631,7 @@ def create_kmz_from_gpx_and_photos(folder):
             points[i]["name"]
         )
        
-        bearing = calculate_bearing(points, i, 500)
+        bearing = calculate_bearing(points, i, 50)
         #print(f"image_index: {image_index}   len:{len(photo_images_info)}   photo_time:{photo_images_info[image_index]["timestamp"]}   time:{time}")
     
         # Show all photos before the current trackpoint apart from the ones already shown.
@@ -728,7 +728,7 @@ def create_kmz_from_gpx_and_photos(folder):
         #
         if "descent".lower() in track_name.lower():
             for i, waypoint in enumerate(gpx.waypoints):
-                if i<=10:
+                if i<=11:
                     animated_update_hide = ET.SubElement(playlist, 'gx:AnimatedUpdate')
                     update_hide = ET.SubElement(animated_update_hide, "Update")
                     change_hide = ET.SubElement(update_hide, "Change")
@@ -841,7 +841,7 @@ def create_kmz_from_gpx_and_photos(folder):
     # shown during the tour, the appropriate icon is displayed instead of just
     # a pin.
     #
-    icon_names = ["Hiker", "Hotel", "Restaurant", "Summit", "Bridge"]
+    icon_names = ["Hiker", "Heliport", "Hotel", "Restaurant", "Summit", "Bridge", "Airport"]
     for icon_name in icon_names:
         icon_image_filepath = os.path.join(folder, icon_name + ".png")
         
