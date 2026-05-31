@@ -16,6 +16,9 @@
 # - image files of photos (jpg, jpeg and heic only) taken during the track.  These should
 #   have proper timestamps in the EXIF metadata.
 #   - The GPS data from the image files are not used in this script
+#   - Photo timestamps are extracted using DateTimeOriginal from EXIF data for accurate
+#     capture time.  Falls back to DateTime (file modification time) if DateTimeOriginal
+#     is not available.
 #   - The method by which the image files are embedded is solely based on the timestamp.
 #     - Gpx tracks usually have timestamps in the UTC format whereas image files will have
 #       timestamps based on the timezones where they were taken.
@@ -32,6 +35,26 @@
 #
 # A video of the tour can then be made in Google Earth Pro.
 #
+# Camera behaviour:
+#   - The camera heading uses exponential moving average (EMA) smoothing to avoid jarring
+#     angle changes, especially on zigzag/switchback trails.  The raw bearing is calculated
+#     towards a point 200 trackpoints ahead for general direction of travel.
+#   - The camera targets a point 20 trackpoints ahead of the hiker so the progressing
+#     track tip is always visible, even when terrain (mountains) would otherwise block it.
+#   - Camera position updates every 20 trackpoints with a 1-second smooth fly-to transition.
+#
+# Text overlay:
+#   - A transparent PNG image is generated every 10 trackpoints showing track details.
+#   - If the track name contains a "Day N" pattern (e.g. "EBC Trek - Day 5 - To Tengboche"),
+#     it is split into separate lines:
+#       Line 1: Trek name and day (e.g. "EBC Trek - Day 5")
+#       Line 2: Destination (e.g. "To Tengboche")
+#       Line 3: Distance, altitude and time
+#     If the destination text is too long, it wraps into two lines (4 lines total) and
+#     the image height is increased to accommodate.
+#   - If the track name does not match the "Day N" pattern, the original 2-line layout
+#     is used (track name + stats).
+#
 # Other requirements:
 #   <wpt lat="27.923474" lon="86.805625">
 #     <ele>4597.1173153701775</ele>
@@ -42,9 +65,9 @@
 #   </wpt>    
 #
 # - There are several transparent icon files downloaded from https://www.flaticon.com/free-icons
-#   that should also be present in the folder.  These  should be named as Hiker.png, Bridge.png,
-#   Hotel.png, Restaurant.png and Summit.png.  These icons are displayed for a waypoint defined
-#   like the above in the gpx track.
+#   that should also be present in the folder.  These should be named as Hiker.png, Bridge.png,
+#   Hotel.png, Restaurant.png, Summit.png, Campground.png, Temple.png, etc.  These icons are
+#   displayed for a waypoint defined like the above in the gpx track.
 #   - If there are other types of waypoints in the gpx track, then download relevant icons and
 #     save them as the same name displayed in <sym> field.
 # - Also a transparent Title.png should be present.  This is used as the title of the tour/video.
@@ -52,7 +75,7 @@
 #   the script will throw an error listing the missing package - install them
 #
 #
-# ChatGPT and Google Gemini helped a lot in creating this script !!!
+# ChatGPT, Google Gemini and Windsurf Cascade helped a lot in creating this script !!!
 #
     
 
@@ -73,6 +96,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import io
 import datetime
 import pytz
+import re
 
 
 #
@@ -348,6 +372,32 @@ def create_text_image_overlay_element(text_image_path, overlay_id):
     return screen_overlay
     
     
+def smooth_bearing_ema(new_bearing, previous_bearing, alpha=0.1):
+    """
+    Smooths bearing using exponential moving average with circular angle handling.
+    Handles the 0/360 degree wrap-around correctly.
+    
+    Args:
+        new_bearing: The new raw bearing in degrees (0-360).
+        previous_bearing: The previous smoothed bearing in degrees (0-360), or None.
+        alpha: Smoothing factor (0-1). Lower = smoother. Default 0.1.
+    
+    Returns:
+        The smoothed bearing in degrees (0-360).
+    """
+    if previous_bearing is None:
+        return new_bearing
+    
+    diff = new_bearing - previous_bearing
+    if diff > 180:
+        diff -= 360
+    elif diff < -180:
+        diff += 360
+    
+    smoothed = previous_bearing + alpha * diff
+    return smoothed % 360
+
+
 def calculate_bearing(points, current_index, points_to_consider=100):
     """
     Calculates the bearing from the current track point to a point
@@ -417,41 +467,54 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     return distance
 
 #
-# This function create a transparent png image for each trackpoint.  The image will contain
-# details of the track name, distance from the start, altitude and the time.  These images
-# will be shown one by one during the tour.
-#    
-#def create_text_image_png(text1, text2, text3, text4, filename):
+# This function creates a transparent png image for each trackpoint.  The image will contain
+# details of the track name, destination, distance from the start, altitude and the time.
+# These images will be shown one by one during the tour.
+#
+# If text1 matches the "Day N" pattern (e.g. "EBC Trek - Day 5 - To Tengboche"), it is
+# split into: Line 1 = "EBC Trek - Day 5", Line 2 = "To Tengboche", Line 3 = text2 (stats).
+# If the destination text (Line 2) is too long to fit in one line, it wraps into two lines,
+# producing 4 lines total and a taller image (360px instead of 300px).
+# If text1 does not match the pattern, the original 2-line layout is used.
+#
 def create_text_image_png(text1, text2, filename):
-    width, height = 1600, 300
+    width = 1600
     font_size = 40
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"  # Update if needed
-
-#    texts = [text1, text2, text3, text4]
-    texts = [text1, text2]
-    line_spacing = 60
-#    base_y = 80
-    base_y = 180
-
-    # Load font
     font = ImageFont.truetype(font_path, font_size)
+    line_spacing = 60
+    max_text_width = width - 2 * 20
 
-    # --- STROKE VERSION ---
-    #img_stroke = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    #draw_stroke = ImageDraw.Draw(img_stroke)
+    # Try to split text1 on "Day <number>" pattern
+    match = re.search(r'(.*Day\s+\d+)\s*-\s*(.*)', text1)
+    if match:
+        header_text = match.group(1).strip()
+        destination_text = match.group(2).strip()
 
-    #for i, txt in enumerate(texts):
-    #    y = base_y + i * line_spacing
-    #    x = 50
-    #    # Draw stroke (outline)
-    #    for dx in [-2, 0, 2]:
-    #        for dy in [-2, 0, 2]:
-    #            if dx != 0 or dy != 0:
-    #                draw_stroke.text((x + dx, y + dy), txt, font=font, fill="black")
-    #    # Draw fill
-    #    draw_stroke.text((x, y), txt, font=font, fill="white")
-
-    #img_stroke.save(f"{filename}-stroke.png")
+        # Check if destination text fits in one line; if not, wrap at word boundary
+        bbox = font.getbbox(destination_text)
+        text_width = bbox[2] - bbox[0]
+        if text_width > max_text_width:
+            words = destination_text.split()
+            line1_words = []
+            for word in words:
+                test_line = ' '.join(line1_words + [word])
+                tw = font.getbbox(test_line)[2] - font.getbbox(test_line)[0]
+                if tw > max_text_width and line1_words:
+                    break
+                line1_words.append(word)
+            dest_line1 = ' '.join(line1_words)
+            dest_line2 = ' '.join(words[len(line1_words):])
+            texts = [header_text, dest_line1, dest_line2, text2]
+            height = 360
+        else:
+            texts = [header_text, destination_text, text2]
+            height = 300
+        base_y = 120
+    else:
+        texts = [text1, text2]
+        height = 300
+        base_y = 180
 
     # --- SHADOW VERSION ---
     img_shadow = Image.new("RGBA", (width, height), (0, 0, 0, 0))
@@ -614,11 +677,15 @@ def create_kmz_from_gpx_and_photos(folder):
         if i==12:
             break
 
-    # Change camera position every this number of points 
-    update_camera_frequency = 100
+    # Change camera position every this number of points.
+    # The bearing is smoothed using EMA (exponential moving average) to avoid jarring
+    # camera angle changes on zigzag/switchback trails.  The camera targets a point
+    # 20 trackpoints ahead of the hiker to keep the progressing track tip visible.
+    update_camera_frequency = 20
 
     image_index = 0
     previous_text_image_overlay_id = ""
+    smoothed_bearing = None
     
     #    
     # Create animated elements
@@ -639,7 +706,10 @@ def create_kmz_from_gpx_and_photos(folder):
             points[i]["name"]
         )
        
-        bearing = calculate_bearing(points, i, 50)
+        raw_bearing = calculate_bearing(points, i, 200)
+        if raw_bearing is not None:
+            smoothed_bearing = smooth_bearing_ema(raw_bearing, smoothed_bearing, alpha=0.1)
+        bearing = smoothed_bearing
         #print(f"image_index: {image_index}   len:{len(photo_images_info)}   photo_time:{photo_images_info[image_index]["timestamp"]}   time:{time}")
     
         # Show all photos before the current trackpoint apart from the ones already shown.
@@ -669,7 +739,9 @@ def create_kmz_from_gpx_and_photos(folder):
             image_index += 1                    
 
         # Show the transparent png image that has the following details.
-        # The name of the segment, distance travelled so far, current altitue and current time.
+        # Line 1: Trek name and day (if "Day N" pattern found in track name)
+        # Line 2: Destination (or the full track name if no pattern match)
+        # Line 3: Distance travelled so far, current altitude and current time.
         if i==0 or i%10 == 0:
             text_image_file_name = os.path.join(folder, "text_img_" + str(i))
             text_image_base_name = os.path.splitext(os.path.basename(text_image_file_name))[0]
@@ -693,11 +765,13 @@ def create_kmz_from_gpx_and_photos(folder):
         # Change camera position
         if i%update_camera_frequency == 0:
             flyto = ET.SubElement(playlist, 'gx:FlyTo')
-            ET.SubElement(flyto, 'gx:duration').text = '.3'
+            ET.SubElement(flyto, 'gx:duration').text = '1.0'
             ET.SubElement(flyto, 'gx:flyToMode').text = 'smooth'
             lookat = ET.SubElement(flyto, 'LookAt')
-            ET.SubElement(lookat, 'longitude').text = str(lon)
-            ET.SubElement(lookat, 'latitude').text = str(lat)
+            # Look ahead 20 points so the track tip stays visible
+            look_ahead_index = min(i + 20, len(points) - 1)
+            ET.SubElement(lookat, 'longitude').text = str(points[look_ahead_index]["longitude"])
+            ET.SubElement(lookat, 'latitude').text = str(points[look_ahead_index]["latitude"])
             ET.SubElement(lookat, 'altitude').text = '0'
             ET.SubElement(lookat, 'heading').text = str(bearing)
             #ET.SubElement(lookat, 'heading').text = '0'
