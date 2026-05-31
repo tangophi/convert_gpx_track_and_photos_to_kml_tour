@@ -22,6 +22,9 @@ You can even record a **video** of the tour using Google Earth Pro.
   - **Strava**, **Gaia GPS**, or any GPS tracking app.
 - For multi-day treks:
   - Combine multiple tracks via [GPX Studio](https://gpx.studio/)
+  - Use the 'Merge the contents and keep traces disconnected' option in the Merge operation to keep the track segments separate in the same gpx file.
+  - Edit Appearance of each segment to change the color to differentiate between days.
+  - Edit Info of each segment to give a name to each day's track in the format such as "Audens Col Trek - Day 4 - To Sukhatal (4773m)" or "EBC Trek - Day 5 - To Tengboche".  The script will then extract "Audens Col Trek - Day 4" or "EBC Trek - Day 5" and display that as the first line.  The rest will be line 2.
   - Add **waypoints** (like lunch stops, hotels) using GPX Studio.
 
 ### 2. Photos (`.jpg`, `.jpeg`, `.heic`)
@@ -43,9 +46,18 @@ You can even record a **video** of the tour using Google Earth Pro.
 - Common icons to include:
   - `Hiker.png`, `Bridge.png`, `Hotel.png`, `Restaurant.png`, `Summit.png`
 - Download free icons from [Flaticon](https://www.flaticon.com/free-icons)
+- In Gpx studio, sometimes for waypoints, a suitable custom icon may not be available and the sym tag is not added for such waypoints.  For example, a Temple icon is not available in Gpx studio.  In such cases, after the gpx file is created, manually edit the file and add something like the following sym tag to the waypoint.  Ensure that a Temple.png icon file is also available in the same folder.
+  ```xml
+    <wpt lat="30.994463" lon="78.941278">
+      <ele>3054.6204168133636</ele>
+      <name>Gangotri Temple</name>
+      <sym>Temple</sym>
+    </wpt>
+  ```
 
 ### 4. Title Image
 - A transparent `Title.png` image shown at the beginning of the tour.
+  - Use Inkscape to create a transparent PNG image with your desired title text.
 
 ---
 
@@ -73,6 +85,9 @@ All required files (gpx file, image files, icon files and the title image file s
 ### Example usage and output
 
 ```bash
+user@ubuntu22:~$ source myenv/bin/activate
+(myenv) user@ubuntu22:~$
+
 (myenv) user@ubuntu22:~/convert_gpx_track_and_photos_to_kml_tour$ ls
 Bridge.png  convert_gpx_track_and_photos_to_kml_tour.py  Hiker.png  Hotel.png  LICENSE  README.md  Restaurant.png  sample_files  Summit.png
 
@@ -93,6 +108,12 @@ Combining the KML file along with the images and creating KMZ file - ./combined.
 
 (myenv) user@ubuntu22:~/convert_gpx_track_and_photos_to_kml_tour$ ls -l combined.kmz
 -rw-rw-r-- 1 user user 95516018 May 29 08:40 combined.kmz
+```
+
+Alternatively, you can use the following command to run the script.  Ensure that all the icon png files are copied to the same directory (./Audens_Col_photo_tour) as the image files and gpx file.  The Title.png file should also be in this directory.
+```bash
+user@ubuntu22:~$ source myenv/bin/activate
+(myenv) user@ubuntu22:~$ python3 convert_gpx_track_and_photos_to_kml_tour.py ./Audens_Col_photo_tour
 ```
 
 ---
@@ -131,7 +152,7 @@ The following section of the script can be customized based on your preferences 
 #
 # Change this to the proper offset based on where the GPX track was recorded and the photos taken
 #
-LOCAL_TIME_OFFSET_FROM_UTC = timedelta(hours=5, minutes=45)
+LOCAL_TIME_OFFSET_FROM_UTC = timedelta(hours=5, minutes=30)
 
 #
 # Duration for showing each photo
