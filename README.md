@@ -68,13 +68,6 @@ The GPX file, image files, and the title image file should be placed in the **sa
 
 ---
 
-## 📤 Output
-
-- A file named `combined.kmz` is generated in the same folder.
-- Open this file in **Google Earth Pro**.
-- Find the **"Animated tour"** element in the sidebar and play it.
-
----
 
 ## How to Run the Script
 
@@ -116,6 +109,15 @@ Alternatively, you can use the following command to run the script.  Ensure that
 user@ubuntu22:~$ source myenv/bin/activate
 (myenv) user@ubuntu22:~$ python3 convert_gpx_track_and_photos_to_kml_tour.py ./Audens_Col_photo_tour
 ```
+
+---
+
+## 📤 Output
+
+- A file named `combined.kmz` is generated in the same folder.
+- Open this file in **Google Earth Pro**.
+- Find the **"Animated tour"** element in the sidebar and play it.
+  - Or click on **"Animated tour"** and then **"Tools->Movie Maker"** to create a video.
 
 ---
 
