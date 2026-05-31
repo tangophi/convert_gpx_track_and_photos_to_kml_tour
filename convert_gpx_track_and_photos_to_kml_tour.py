@@ -554,10 +554,8 @@ def create_kmz_from_gpx_and_photos(folder):
 
     photo_images_info = get_info_of_all_images_files(folder)
 
-    #for info in photo_images_info:
-    #    print(f'filename: {info["filename"]}')
+    script_folder = os.path.dirname(os.path.abspath(__file__))
 
-      
     default_color = 'FFFFFFFF'  # White 
     points = []
     
@@ -892,6 +890,8 @@ def create_kmz_from_gpx_and_photos(folder):
     #
     # Add icons for waypoints as 'styles'.  The icon names are auto-discovered
     # from the waypoint <sym> tags in the GPX file, plus "Hiker" is always included.
+    # Icon files are looked up first in the script's folder, then in the GPX/images
+    # folder.  If an icon is not found in either location, the script exits with an error.
     # The waypoint placemarks are added with the relevant style later.  So that when
     # these waypoints are shown during the tour, the appropriate icon is displayed
     # instead of just a pin.
@@ -901,16 +901,28 @@ def create_kmz_from_gpx_and_photos(folder):
         if waypoint.symbol:
             icon_names.add(waypoint.symbol)
     icon_names = sorted(icon_names)
+
+    # Resolve each icon to its actual file path (script folder first, then GPX folder)
+    icon_paths = {}
     for icon_name in icon_names:
-        icon_image_filepath = os.path.join(folder, icon_name + ".png")
-        
+        script_path = os.path.join(script_folder, icon_name + ".png")
+        folder_path = os.path.join(folder, icon_name + ".png")
+        if os.path.exists(script_path):
+            icon_paths[icon_name] = script_path
+        elif os.path.exists(folder_path):
+            icon_paths[icon_name] = folder_path
+        else:
+            print(f"Error: Icon file '{icon_name}.png' not found in either:")
+            print(f"  Script folder: {script_folder}")
+            print(f"  GPX/images folder: {folder}")
+            sys.exit(1)
+
+    for icon_name in icon_names:
         style = ET.SubElement(document, 'Style', id=f"{icon_name}Style")
         icon_style = ET.SubElement(style, 'IconStyle')
         icon = ET.SubElement(icon_style, 'Icon')
-        
-        if os.path.exists(icon_image_filepath):
-            ET.SubElement(icon, "href").text = icon_name + ".png"
-            
+        ET.SubElement(icon, "href").text = icon_name + ".png"
+
         label_style = ET.SubElement(style, 'LabelStyle')
         if icon_name == "Hiker":
             ET.SubElement(icon_style, 'scale').text = '2'
@@ -969,11 +981,7 @@ def create_kmz_from_gpx_and_photos(folder):
             kmz_file.write(img_file, os.path.basename(img_file))
             
         for icon_name in icon_names:
-            icon_image_filepath = os.path.join(folder, icon_name + ".png")
-            if os.path.exists(icon_image_filepath):
-                kmz_file.write(icon_image_filepath, os.path.basename(icon_image_filepath))
-            else:
-                print(f"Icon image file {icon_image_filepath} doesn't exist.")
+            kmz_file.write(icon_paths[icon_name], icon_name + ".png")
 
     # Clean up temporary text image files
     for img_file in text_image_files:
