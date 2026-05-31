@@ -78,7 +78,7 @@ import pytz
 #
 # Change this to the proper offset based on where the gpx track was recorded and the photos taken
 #
-LOCAL_TIME_OFFSET_FROM_UTC = timedelta(hours=5, minutes=45)
+LOCAL_TIME_OFFSET_FROM_UTC = timedelta(hours=5, minutes=30)
 
 #
 # Duration for showing each photo
@@ -100,7 +100,7 @@ CAMERA_TILT_ANGLE=60
 #
 # Camera range in metres determines how far the view is shown from.
 #
-CAMERA_RANGE=1000
+CAMERA_RANGE=2000
 
 
 
@@ -151,7 +151,11 @@ def get_image_info(filepath, filename):
     if ext in ['jpg', 'jpeg']:
         img = Image.open(filepath)
         exif_data = piexif.load(img.info['exif'])
-        dt_str = exif_data['0th'][piexif.ImageIFD.DateTime].decode()
+        # Use DateTimeOriginal for actual photo capture time, not DateTime (file modification time)
+        if 'Exif' in exif_data and piexif.ExifIFD.DateTimeOriginal in exif_data['Exif']:
+            dt_str = exif_data['Exif'][piexif.ExifIFD.DateTimeOriginal].decode()
+        else:
+            dt_str = exif_data['0th'][piexif.ImageIFD.DateTime].decode()
         dt = datetime.datetime.strptime(dt_str, "%Y:%m:%d %H:%M:%S")
         orientation = exif_data["0th"].get(piexif.ImageIFD.Orientation, "Not found")
         width, height = img.size
@@ -166,7 +170,11 @@ def get_image_info(filepath, filename):
         for metadata in heif_file.metadata or []:
             if metadata['type'] == 'Exif':
                 exif_dict = piexif.load(metadata['data'])
-                dt_str = exif_dict['0th'][piexif.ImageIFD.DateTime].decode()
+                # Use DateTimeOriginal for actual photo capture time, not DateTime (file modification time)
+                if 'Exif' in exif_dict and piexif.ExifIFD.DateTimeOriginal in exif_dict['Exif']:
+                    dt_str = exif_dict['Exif'][piexif.ExifIFD.DateTimeOriginal].decode()
+                else:
+                    dt_str = exif_dict['0th'][piexif.ImageIFD.DateTime].decode()
                 dt = datetime.datetime.strptime(dt_str, "%Y:%m:%d %H:%M:%S")
                 #print (f"datetime: {dt}")
                 
@@ -637,6 +645,8 @@ def create_kmz_from_gpx_and_photos(folder):
         # Show all photos before the current trackpoint apart from the ones already shown.
         # This also ensures that all the photos taken before the tracking had begun will be
         # shown initially.        
+        
+        #print(f"{photo_images_info[image_index]["filename"]} timestamp:{photo_images_info[image_index]["timestamp"]}, time: {time}")
         while image_index < len(photo_images_info) and photo_images_info[image_index]["timestamp"] < time:
             img_base_name = os.path.splitext(os.path.basename(photo_images_info[image_index]["filename"]))[0]
             overlay_id = f"image_{img_base_name}"
