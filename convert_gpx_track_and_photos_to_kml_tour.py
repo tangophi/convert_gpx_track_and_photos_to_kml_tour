@@ -89,13 +89,9 @@ import piexif
 import pyheif
 import xml.etree.ElementTree as ET
 from math import radians, sin, cos, sqrt, atan2, degrees
-import glob
 import zipfile
-import svgwrite
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-import io
 import datetime
-import pytz
 import re
 
 
@@ -125,11 +121,6 @@ CAMERA_TILT_ANGLE=60
 # Camera range in metres determines how far the view is shown from.
 #
 CAMERA_RANGE=2000
-
-
-
-
-
 
 
 #
@@ -298,8 +289,6 @@ def create_photo_image_overlay_element(info):
     ET.SubElement(screen_overlay, "name").text = f"ImageOverlay_{overlay_id}"
     icon = ET.SubElement(screen_overlay, "Icon")
     ET.SubElement(icon, "href").text = os.path.basename(info["filepath"])
-    #ET.SubElement(screen_overlay, "overlayXY", x="0.5", y="0.5", xunits="fraction", yunits="fraction")
-    #ET.SubElement(screen_overlay, "screenXY", x="0.5", y="0.5", xunits="fraction", yunits="fraction")
 
     ET.SubElement(screen_overlay, "overlayXY", x="0", y="1", xunits="fraction", yunits="fraction")
     ET.SubElement(screen_overlay, "screenXY", x="0", y="1", xunits="fraction", yunits="fraction")
@@ -310,10 +299,8 @@ def create_photo_image_overlay_element(info):
     # to 80% of screen height while maintaing the aspect ratio.
     #
     if info["width"]/info["height"] >= 16/9:
-        #ET.SubElement(screen_overlay, "size", x="0.8", y="0", xunits="fraction", yunits="fraction")
         ET.SubElement(screen_overlay, "size", x="0.9", y="0", xunits="fraction", yunits="fraction")
     else:
-        #ET.SubElement(screen_overlay, "size", x="0", y="0.8", xunits="fraction", yunits="fraction")
         ET.SubElement(screen_overlay, "size", x="0", y="0.9", xunits="fraction", yunits="fraction")
     
     #
@@ -329,7 +316,6 @@ def create_photo_image_overlay_element(info):
     elif info["orientation"] == 3:
         ET.SubElement(screen_overlay, "rotation").text = "180"
     
-    #ET.SubElement(screen_overlay, 'color').text = 'ffffffff'
     ET.SubElement(screen_overlay, "visibility").text = "0"
     return screen_overlay
 
@@ -518,7 +504,6 @@ def create_text_image_png(text1, text2, filename):
 
     # --- SHADOW VERSION ---
     img_shadow = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw_shadow = ImageDraw.Draw(img_shadow)
 
     shadow_offset = (2, 2)
     blur_radius = 2
@@ -624,11 +609,9 @@ def create_kmz_from_gpx_and_photos(folder):
     ET.SubElement(lookat, 'latitude').text = '20.5937'
     ET.SubElement(lookat, 'altitude').text = '0'
     ET.SubElement(lookat, 'heading').text = '0'
-    #ET.SubElement(lookat, 'heading').text = '0'
     ET.SubElement(lookat, 'tilt').text = '0'
-    #ET.SubElement(lookat, 'tilt').text = '0'
     ET.SubElement(lookat, 'range').text = '40000000'
-    ET.SubElement(lookat, 'altitudeMode').text = 'relativeToGround'            		
+    ET.SubElement(lookat, 'altitudeMode').text = 'relativeToGround'
             
     #
     # This is to zoom to the starting point of the track.
@@ -641,11 +624,9 @@ def create_kmz_from_gpx_and_photos(folder):
     ET.SubElement(lookat, 'latitude').text = str(points[0]["latitude"])
     ET.SubElement(lookat, 'altitude').text = '0'
     ET.SubElement(lookat, 'heading').text = '0'
-    #ET.SubElement(lookat, 'heading').text = '0'
     ET.SubElement(lookat, 'tilt').text = '0'
-    #ET.SubElement(lookat, 'tilt').text = '0'
     ET.SubElement(lookat, 'range').text = '1000'
-    ET.SubElement(lookat, 'altitudeMode').text = 'relativeToGround'            		
+    ET.SubElement(lookat, 'altitudeMode').text = 'relativeToGround'
 
     wait_element = ET.SubElement(playlist, "gx:Wait")
     ET.SubElement(wait_element, "gx:duration").text = "1"
@@ -658,11 +639,12 @@ def create_kmz_from_gpx_and_photos(folder):
     if os.path.exists(title_filepath):
         animated_update_hide = ET.SubElement(playlist, 'gx:AnimatedUpdate')
         update_hide = ET.SubElement(animated_update_hide, "Update")
+        ET.SubElement(update_hide, 'targetHref')
         change_hide = ET.SubElement(update_hide, "Change")
         screen_overlay_hide = ET.SubElement(change_hide, "ScreenOverlay", attrib={"targetId": "title_overlay"})
         ET.SubElement(screen_overlay_hide, "visibility", attrib={"xmlns":"http://www.opengis.net/kml/2.2"}).text = "0"        
 
-    # Show all the waypoints encountered only on the ascent at the beginning of the tour
+    # Show all the waypoints at the beginning of the tour
     for i, waypoint in enumerate(gpx.waypoints):
         animated_update_show = ET.SubElement(playlist, 'gx:AnimatedUpdate')
         update_show = ET.SubElement(animated_update_show, "Update")
@@ -670,12 +652,6 @@ def create_kmz_from_gpx_and_photos(folder):
         change_show = ET.SubElement(update_show, "Change")
         placemark_show = ET.SubElement(change_show, "Placemark", attrib={"targetId": f'waypoint{i}'})
         ET.SubElement(placemark_show, "visibility").text = "1"
-
-        #
-        # There were only 13 way points on the ascent.
-        #
-        if i==12:
-            break
 
     # Change camera position every this number of points.
     # The bearing is smoothed using EMA (exponential moving average) to avoid jarring
@@ -696,7 +672,6 @@ def create_kmz_from_gpx_and_photos(folder):
     #   that hide the previous such image.
     #
     for i in range(len(points) - 1):
-        # lon, lat, elevation, color, time, track_name = points[i]
         lon, lat, elevation, color, time, track_name = (
             points[i]["longitude"],
             points[i]["latitude"],
@@ -709,20 +684,18 @@ def create_kmz_from_gpx_and_photos(folder):
         raw_bearing = calculate_bearing(points, i, 200)
         if raw_bearing is not None:
             smoothed_bearing = smooth_bearing_ema(raw_bearing, smoothed_bearing, alpha=0.1)
-        bearing = smoothed_bearing
-        #print(f"image_index: {image_index}   len:{len(photo_images_info)}   photo_time:{photo_images_info[image_index]["timestamp"]}   time:{time}")
-    
+        bearing = smoothed_bearing if smoothed_bearing is not None else 0
+
         # Show all photos before the current trackpoint apart from the ones already shown.
         # This also ensures that all the photos taken before the tracking had begun will be
-        # shown initially.        
-        
-        #print(f"{photo_images_info[image_index]["filename"]} timestamp:{photo_images_info[image_index]["timestamp"]}, time: {time}")
+        # shown initially.
         while image_index < len(photo_images_info) and photo_images_info[image_index]["timestamp"] < time:
             img_base_name = os.path.splitext(os.path.basename(photo_images_info[image_index]["filename"]))[0]
             overlay_id = f"image_{img_base_name}"
                 
             animated_update_show = ET.SubElement(playlist, 'gx:AnimatedUpdate')
             update_show = ET.SubElement(animated_update_show, "Update")
+            ET.SubElement(update_show, 'targetHref')
             change_show = ET.SubElement(update_show, "Change")
             screen_overlay_show = ET.SubElement(change_show, "ScreenOverlay", attrib={"targetId": overlay_id})
             ET.SubElement(screen_overlay_show, "visibility", attrib={"xmlns": "http://www.opengis.net/kml/2.2"}).text = "1"
@@ -732,11 +705,12 @@ def create_kmz_from_gpx_and_photos(folder):
 
             animated_update_hide = ET.SubElement(playlist, 'gx:AnimatedUpdate')
             update_hide = ET.SubElement(animated_update_hide, "Update")
+            ET.SubElement(update_hide, 'targetHref')
             change_hide = ET.SubElement(update_hide, "Change")
             screen_overlay_hide = ET.SubElement(change_hide, "ScreenOverlay", attrib={"targetId": overlay_id})
             ET.SubElement(screen_overlay_hide, "visibility", attrib={"xmlns": "http://www.opengis.net/kml/2.2"}).text = "0"
             
-            image_index += 1                    
+            image_index += 1
 
         # Show the transparent png image that has the following details.
         # Line 1: Trek name and day (if "Day N" pattern found in track name)
@@ -751,12 +725,14 @@ def create_kmz_from_gpx_and_photos(folder):
             if previous_text_image_overlay_id != "":
                 animated_update_hide = ET.SubElement(playlist, 'gx:AnimatedUpdate')
                 update_hide = ET.SubElement(animated_update_hide, "Update")
+                ET.SubElement(update_hide, 'targetHref')
                 change_hide = ET.SubElement(update_hide, "Change")
                 screen_overlay_hide = ET.SubElement(change_hide, "ScreenOverlay", attrib={"targetId": previous_text_image_overlay_id})
                 ET.SubElement(screen_overlay_hide, "visibility", attrib={"xmlns": "http://www.opengis.net/kml/2.2"}).text = "0"
                 
             animated_update_show = ET.SubElement(playlist, 'gx:AnimatedUpdate')
             update_show = ET.SubElement(animated_update_show, "Update")
+            ET.SubElement(update_show, 'targetHref')
             change_show = ET.SubElement(update_show, "Change")
             screen_overlay_show = ET.SubElement(change_show, "ScreenOverlay", attrib={"targetId": text_image_overlay_id})
             ET.SubElement(screen_overlay_show, "visibility", attrib={"xmlns": "http://www.opengis.net/kml/2.2"}).text = "1"
@@ -774,11 +750,9 @@ def create_kmz_from_gpx_and_photos(folder):
             ET.SubElement(lookat, 'latitude').text = str(points[look_ahead_index]["latitude"])
             ET.SubElement(lookat, 'altitude').text = '0'
             ET.SubElement(lookat, 'heading').text = str(bearing)
-            #ET.SubElement(lookat, 'heading').text = '0'
             ET.SubElement(lookat, 'tilt').text = str(CAMERA_TILT_ANGLE)
-            #ET.SubElement(lookat, 'tilt').text = '0'
             ET.SubElement(lookat, 'range').text = str(CAMERA_RANGE)
-            ET.SubElement(lookat, 'altitudeMode').text = 'relativeToGround'            		
+            ET.SubElement(lookat, 'altitudeMode').text = 'relativeToGround'
 
         # show the line segment
         update = ET.SubElement(playlist, 'gx:AnimatedUpdate')
@@ -788,7 +762,6 @@ def create_kmz_from_gpx_and_photos(folder):
         ET.SubElement(update_tag, 'targetHref')
         change = ET.SubElement(update_tag, 'Change')
         placemark = ET.SubElement(change, 'Placemark', targetId=f'seg{i}')
-        #ET.SubElement(placemark, 'styleUrl').text = f'#{style_id}'  # Use the new style ID
         ET.SubElement(placemark, 'visibility').text = '1'
 
         # Change the position of the Hiker icon
@@ -810,19 +783,21 @@ def create_kmz_from_gpx_and_photos(folder):
         # On the descent, we didnt stay in some of the places we stayed on the ascent
         # and hence better not show them.
         #
-        if "descent".lower() in track_name.lower():
-            for i, waypoint in enumerate(gpx.waypoints):
-                if i<=11:
+        if "descent" in track_name.lower():
+            for j, waypoint in enumerate(gpx.waypoints):
+                if j<=11:
                     animated_update_hide = ET.SubElement(playlist, 'gx:AnimatedUpdate')
                     update_hide = ET.SubElement(animated_update_hide, "Update")
+                    ET.SubElement(update_hide, 'targetHref')
                     change_hide = ET.SubElement(update_hide, "Change")
-                    placemark_hide = ET.SubElement(change_hide, "Placemark", attrib={"targetId": f'waypoint{i}'})
+                    placemark_hide = ET.SubElement(change_hide, "Placemark", attrib={"targetId": f'waypoint{j}'})
                     ET.SubElement(placemark_hide, "visibility").text = "0"
                 else:
                     animated_update_show = ET.SubElement(playlist, 'gx:AnimatedUpdate')
                     update_show = ET.SubElement(animated_update_show, "Update")
+                    ET.SubElement(update_show, 'targetHref')
                     change_show = ET.SubElement(update_show, "Change")
-                    placemark_show = ET.SubElement(change_show, "Placemark", attrib={"targetId": f'waypoint{i}'})
+                    placemark_show = ET.SubElement(change_show, "Placemark", attrib={"targetId": f'waypoint{j}'})
                     ET.SubElement(placemark_show, "visibility").text = "1"
 
 
@@ -833,6 +808,7 @@ def create_kmz_from_gpx_and_photos(folder):
                 
         animated_update_show = ET.SubElement(playlist, 'gx:AnimatedUpdate')
         update_show = ET.SubElement(animated_update_show, "Update")
+        ET.SubElement(update_show, 'targetHref')
         change_show = ET.SubElement(update_show, "Change")
         screen_overlay_show = ET.SubElement(change_show, "ScreenOverlay", attrib={"targetId": overlay_id})
         ET.SubElement(screen_overlay_show, "visibility", attrib={"xmlns": "http://www.opengis.net/kml/2.2"}).text = "1"
@@ -842,6 +818,7 @@ def create_kmz_from_gpx_and_photos(folder):
 
         animated_update_hide = ET.SubElement(playlist, 'gx:AnimatedUpdate')
         update_hide = ET.SubElement(animated_update_hide, "Update")
+        ET.SubElement(update_hide, 'targetHref')
         change_hide = ET.SubElement(update_hide, "Change")
         screen_overlay_hide = ET.SubElement(change_hide, "ScreenOverlay", attrib={"targetId": overlay_id})
         ET.SubElement(screen_overlay_hide, "visibility", attrib={"xmlns": "http://www.opengis.net/kml/2.2"}).text = "0"
@@ -852,12 +829,8 @@ def create_kmz_from_gpx_and_photos(folder):
     # This is to wait at the end of the tour so a recorded video doesnt end abruptly
     #
     wait_element = ET.SubElement(playlist, "gx:Wait")
-    ET.SubElement(wait_element, "gx:duration").text = "3" 
-    
-    
-    
-    
-    
+    ET.SubElement(wait_element, "gx:duration").text = "3"
+
     # Create image overlays (hidden initially - will be shown during the tour)
     for info in photo_images_info:
         image_overlay_element = create_photo_image_overlay_element(info)
@@ -870,20 +843,22 @@ def create_kmz_from_gpx_and_photos(folder):
     
     total_distance = 0
     text_image_files = []
-    
+
+    # Create shared track line styles (one per unique color) to avoid duplicating
+    # style definitions in every segment placemark.  KML color format is aabbggrr.
+    unique_colors = set(p["color"] for p in points)
+    for color in unique_colors:
+        style = ET.SubElement(document, 'Style', id=f'track_style_{color}')
+        line_style = ET.SubElement(style, 'LineStyle')
+        ET.SubElement(line_style, 'color').text = 'ff' + str(color)
+        ET.SubElement(line_style, 'width').text = '6'
+
     # Add the line segments and the text images (hidden initially - will be shown during the tour)
     # to the kml doc
     for i in range(len(points) - 1):
-      
+
         placemark = ET.SubElement(document, 'Placemark', id=f'seg{i}')
-
-        #ET.SubElement(placemark, 'styleUrl').text = '#yellowLine'
-        style_id = f'track_style_{points[i]["color"]}'  # Unique style ID
-        style = ET.SubElement(placemark, 'Style', id=style_id)
-        line_style = ET.SubElement(style, 'LineStyle')
-        ET.SubElement(line_style, 'color').text = 'ff' + str(points[i]["color"])  # KML color format is aabbggrr
-        ET.SubElement(line_style, 'width').text = '6'
-
+        ET.SubElement(placemark, 'styleUrl').text = f'#track_style_{points[i]["color"]}'
         ET.SubElement(placemark, 'visibility').text = '0'
         linestring = ET.SubElement(placemark, 'LineString')
         ET.SubElement(linestring, 'tessellate').text = '1'
@@ -892,7 +867,6 @@ def create_kmz_from_gpx_and_photos(folder):
 
         distance = calculate_distance(points[i]["latitude"], points[i]["longitude"], points[i+1]["latitude"], points[i+1]["longitude"])
         total_distance += distance/1000
-        #print(f"count: {i} Distance between point {i} and {i+1}: {distance:.2f} meters")
 
         #
         # Create transparent png images every 10 trackpoints that show the details of the current segment, the distance
@@ -906,26 +880,27 @@ def create_kmz_from_gpx_and_photos(folder):
             
             # A small hack to show the distance as 0km initially
             if (i==0):        
-                create_text_image_png(f"{points[i]["name"]}", f"0km    {points[i]["elevation"]}m    {time_str}", text_image_file_name)
+                create_text_image_png(f"{points[i]["name"]}", f"0km    {int(round(points[i]["elevation"]))}m    {time_str}", text_image_file_name)
             else:
-                create_text_image_png(f"{points[i]["name"]}", f"{total_distance:0.2f}km    {points[i]["elevation"]}m    {time_str}", text_image_file_name)
+                create_text_image_png(f"{points[i]["name"]}", f"{total_distance:0.2f}km    {int(round(points[i]["elevation"]))}m    {time_str}", text_image_file_name)
                 
             text_image_base_name = os.path.splitext(os.path.basename(text_image_file_name))[0]
             text_image_overlay_id = f"image_{text_image_base_name}"
             text_image_overlay_element = create_text_image_overlay_element(text_image_file_name, text_image_overlay_id)
-            # text_image_overlays_elements.append(text_image_overlay_element)
             document.append(text_image_overlay_element)
 
-
-    
-
     #
-    # Add icons for waypoints as 'styles'.  And the waypoint placemarks are
-    # added with the relevant style later.  So that when these waypoints are
-    # shown during the tour, the appropriate icon is displayed instead of just
-    # a pin.
+    # Add icons for waypoints as 'styles'.  The icon names are auto-discovered
+    # from the waypoint <sym> tags in the GPX file, plus "Hiker" is always included.
+    # The waypoint placemarks are added with the relevant style later.  So that when
+    # these waypoints are shown during the tour, the appropriate icon is displayed
+    # instead of just a pin.
     #
-    icon_names = ["Hiker", "Heliport", "Hotel", "Restaurant", "Summit", "Bridge", "Airport"]
+    icon_names = {"Hiker"}
+    for waypoint in gpx.waypoints:
+        if waypoint.symbol:
+            icon_names.add(waypoint.symbol)
+    icon_names = sorted(icon_names)
     for icon_name in icon_names:
         icon_image_filepath = os.path.join(folder, icon_name + ".png")
         
@@ -949,13 +924,12 @@ def create_kmz_from_gpx_and_photos(folder):
     # progressive line.  Its position is updated regularly when the line extends.
     #
     placemark = ET.SubElement(document, 'Placemark', id='Hiker')
-    #ET.SubElement(placemark, 'name').text = "Hiker"
     ET.SubElement(placemark, 'styleUrl').text = "#HikerStyle"
     point = ET.SubElement(placemark, 'Point')
     ET.SubElement(point, 'coordinates').text = f"{points[0]["longitude"]},{points[0]["latitude"]},{points[0]["elevation"]}"  #lon,lat,ele
     ET.SubElement(placemark, "visibility").text = "0"
-     
-    #     
+
+    #
     # Add the waypoints as placemarks with the appropriate style.
     #
     for i, waypoint in enumerate(gpx.waypoints):
@@ -969,22 +943,17 @@ def create_kmz_from_gpx_and_photos(folder):
             
         ET.SubElement(placemark, 'styleUrl').text = f"#{waypoint.symbol}Style"
         ET.SubElement(placemark, "visibility").text = "0"
-    
-    
-    
+
     # Create the KML file
     tree = ET.ElementTree(doc)
     ET.indent(tree, space="  ", level=0)
     kml_output = os.path.join(folder, gpx_file_name + ".kml")
-    #print(f"kml_output: {kml_output} tree: {tree}")
     tree.write(kml_output, encoding='utf-8', xml_declaration=True)
-
 
     # Create the KMZ
     output_kmz_path = os.path.join(folder, "combined.kmz")
     print(f"Combining the KML file along with the images and creating KMZ file - {output_kmz_path}...")
 
-   
     with zipfile.ZipFile(output_kmz_path, 'w', zipfile.ZIP_DEFLATED) as kmz_file:
         kmz_file.write(kml_output, gpx_file_name + ".kml")
         
@@ -994,7 +963,6 @@ def create_kmz_from_gpx_and_photos(folder):
             print(f"Title image file {title_filepath} doesn't exist.")
         
         for info in photo_images_info:
-            #print(f"Including {os.path.basename(info["filepath"])} inside KMZ file...")
             kmz_file.write(info["filepath"], os.path.basename(info["filepath"]))
             
         for img_file in text_image_files:
@@ -1006,12 +974,16 @@ def create_kmz_from_gpx_and_photos(folder):
                 kmz_file.write(icon_image_filepath, os.path.basename(icon_image_filepath))
             else:
                 print(f"Icon image file {icon_image_filepath} doesn't exist.")
-            
-    
-    
+
+    # Clean up temporary text image files
+    for img_file in text_image_files:
+        if os.path.exists(img_file):
+            os.remove(img_file)
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python create_kmz.py <folder_path>")
+        print(f"Usage: python {sys.argv[0]} <folder_path>")
         sys.exit(1)
 
     folder_path = sys.argv[1]
