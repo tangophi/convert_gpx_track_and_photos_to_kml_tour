@@ -46,7 +46,8 @@ You can even record a **video** of the tour using Google Earth Pro.
 - Common icons to include:
   - `Hiker.png`, `Bridge.png`, `Hotel.png`, `Restaurant.png`, `Summit.png`
 - Download free icons from [Flaticon](https://www.flaticon.com/free-icons)
-- In Gpx studio, sometimes for waypoints, a suitable custom icon may not be available and the sym tag is not added for such waypoints.  For example, a Temple icon is not available in Gpx studio.  In such cases, after the gpx file is created, manually edit the file and add something like the following sym tag to the waypoint.  Ensure that a Temple.png icon file is also available in the same folder.
+- The script looks for icon files **first in the script's own folder**, then in the GPX/images folder.  This means you can keep a shared set of icons alongside the script and they will be used for all treks automatically.  If an icon is not found in either location, the script will exit with an error.
+- In Gpx studio, sometimes for waypoints, a suitable custom icon may not be available and the sym tag is not added for such waypoints.  For example, a Temple icon is not available in Gpx studio.  In such cases, after the gpx file is created, manually edit the file and add something like the following sym tag to the waypoint.  Ensure that a corresponding `.png` icon file is available in the script's folder or the GPX/images folder.
   ```xml
     <wpt lat="30.994463" lon="78.941278">
       <ele>3054.6204168133636</ele>
@@ -63,7 +64,7 @@ You can even record a **video** of the tour using Google Earth Pro.
 
 ## 📂 Folder Structure
 
-All required files (gpx file, image files, icon files and the title image file should be placed in the **same folder** and that folder path should be given as the input to run the script.
+The GPX file, image files, and the title image file should be placed in the **same folder** and that folder path should be given as the input to run the script.  Waypoint icon files (`.png`) can be placed either in the **script's folder** (shared across all treks) or in the GPX/images folder (the script checks the script folder first).
 
 ---
 
