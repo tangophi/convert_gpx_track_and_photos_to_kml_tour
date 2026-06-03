@@ -121,6 +121,21 @@ CAMERA_TILT_ANGLE=60
 # Camera range in metres determines how far the view is shown from.
 #
 CAMERA_RANGE=2000
+#
+# How often to update the camera LookAt during the tour, expressed in number of
+# trackpoints between updates. Larger values mean fewer transitions and a
+# shorter/faster tour; smaller values mean more transitions and a longer/slower
+# tour. Last year's value (2025) = 100.
+#
+UPDATE_CAMERA_FREQUENCY=100
+
+#
+# Duration in seconds of each per-update camera FlyTo transition. Larger values
+# produce smoother, slower moves and increase total tour length; smaller values
+# are snappier and shorten the tour. Last year's value (2025) = 0.3 seconds.
+#
+CAMERA_FLYTO_DURATION_IN_SECS=0.3
+
 
 
 #
@@ -655,7 +670,7 @@ def create_kmz_from_gpx_and_photos(folder):
     # The bearing is smoothed using EMA (exponential moving average) to avoid jarring
     # camera angle changes on zigzag/switchback trails.  The camera targets a point
     # 20 trackpoints ahead of the hiker to keep the progressing track tip visible.
-    update_camera_frequency = 20
+    update_camera_frequency = UPDATE_CAMERA_FREQUENCY
 
     image_index = 0
     previous_text_image_overlay_id = ""
@@ -739,7 +754,7 @@ def create_kmz_from_gpx_and_photos(folder):
         # Change camera position
         if i%update_camera_frequency == 0:
             flyto = ET.SubElement(playlist, 'gx:FlyTo')
-            ET.SubElement(flyto, 'gx:duration').text = '1.0'
+            ET.SubElement(flyto, 'gx:duration').text = str(CAMERA_FLYTO_DURATION_IN_SECS)
             ET.SubElement(flyto, 'gx:flyToMode').text = 'smooth'
             lookat = ET.SubElement(flyto, 'LookAt')
             # Look ahead 20 points so the track tip stays visible
