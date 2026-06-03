@@ -675,6 +675,7 @@ def create_kmz_from_gpx_and_photos(folder):
     image_index = 0
     previous_text_image_overlay_id = ""
     smoothed_bearing = None
+    descending_mode = False
     
     #    
     # Create animated elements
@@ -694,8 +695,19 @@ def create_kmz_from_gpx_and_photos(folder):
             points[i]["name"]
         )
        
+        # Auto-detect steep descents by looking at elevation 200 points ahead
+        look_ahead_index_ele = min(i + 200, len(points) - 1)
+        ele_diff = points[look_ahead_index_ele]["elevation"] - elevation
+        
+        if ele_diff < -30:
+            descending_mode = True
+        elif ele_diff > -10:
+            descending_mode = False
+            
         raw_bearing = calculate_bearing(points, i, 200)
         if raw_bearing is not None:
+            if descending_mode:
+                raw_bearing = (raw_bearing + 180) % 360
             smoothed_bearing = smooth_bearing_ema(raw_bearing, smoothed_bearing, alpha=0.1)
         bearing = smoothed_bearing if smoothed_bearing is not None else 0
 
