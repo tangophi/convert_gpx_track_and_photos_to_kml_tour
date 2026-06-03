@@ -695,13 +695,16 @@ def create_kmz_from_gpx_and_photos(folder):
             points[i]["name"]
         )
        
-        # Auto-detect steep descents by looking at elevation 200 points ahead
+        # Auto-detect steep descents by looking at elevation and distance 200 points ahead
         look_ahead_index_ele = min(i + 200, len(points) - 1)
         ele_diff = points[look_ahead_index_ele]["elevation"] - elevation
         
-        if ele_diff < -30:
+        dist = calculate_distance(lat, lon, points[look_ahead_index_ele]["latitude"], points[look_ahead_index_ele]["longitude"])
+        gradient = (ele_diff / dist * 100) if dist > 0 else 0
+        
+        if ele_diff < 0 and gradient < -25:
             descending_mode = True
-        elif ele_diff > -10:
+        elif gradient > -10:
             descending_mode = False
             
         raw_bearing = calculate_bearing(points, i, 200)
